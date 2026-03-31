@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>订单看板 | 业务进度分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f5f7fb;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            padding: 20px;
+            color: #1e2a3e;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+        .title-area h1 {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #1f3b64;
+        }
+        .title-area p {
+            color: #5a6e8a;
+            font-size: 0.85rem;
+            margin-top: 6px;
+            border-left: 3px solid #3b82f6;
+            padding-left: 12px;
+        }
+        .lang-switch {
+            background: white;
+            border-radius: 40px;
+            padding: 4px;
+            display: flex;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e2edf2;
+        }
+        .lang-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 18px;
+            border-radius: 32px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #4b5e77;
+        }
+        .lang-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+        .lang-btn:not(.active):hover {
+            background: #eef2ff;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            padding: 18px;
+            border: 1px solid #eef2f8;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #eef2ff;
+            padding-bottom: 10px;
+        }
+        .card-icon {
+            width: 34px;
+            height: 34px;
+            background: #eef3fc;
+            border-radius: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+        .card-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f2b3d;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #5b6e8c;
+            margin-bottom: 5px;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 12px;
+            border: 1px solid #e2edf2;
+            background: #ffffff;
+            font-size: 0.85rem;
+            outline: none;
+            font-family: inherit;
+        }
+        select:focus, input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+        }
+        .row-2cols {
+            display: flex;
+            gap: 10px;
+        }
+        .row-2cols .form-group {
+            flex: 1;
+        }
+        .update-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 8px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 6px;
+        }
+        .update-btn:hover {
+            background: #2563eb;
+        }
+        .current-hint {
+            font-size: 0.65rem;
+            color: #5f7f9e;
+            margin-top: 8px;
+            text-align: right;
+            background: #fafcff;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+
+        .charts-section {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 18px;
+            margin-bottom: 30px;
+            border: 1px solid #eef2f8;
+        }
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-left: 10px;
+            border-left: 4px solid #3b82f6;
+            color: #1f3b64;
+        }
+        .charts-flex {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .chart-container {
+            flex: 1;
+            min-width: 280px;
+        }
+        .chart-title {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #5a6e8a;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .simple-chart {
+            background: #fafcff;
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #eef2f8;
+        }
+        .bar-item {
+            margin-bottom: 12px;
+        }
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            margin-bottom: 4px;
+            color: #4b5e77;
+        }
+        .bar-bg {
+            background: #e9eef3;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 28px;
+        }
+        .bar-fill {
+            background: #3b82f6;
+            height: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 500;
+            transition: width 0.3s;
+        }
+        .bar-fill.orange { background: #f97316; }
+        .bar-fill.purple { background: #8b5cf6; }
+        .bar-fill.green { background: #10b981; }
+        .bar-fill.red { background: #ef4444; }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        .multi-bars {
+            margin-top: 8px;
+        }
+        .multi-bar-item {
+            margin-bottom: 12px;
+        }
+        .multi-bar-labels {
+            display: flex;
+            gap: 8px;
+            font-size: 0.65rem;
+            margin-bottom: 3px;
+        }
+        .multi-bar-bg {
+            background: #e9eef3;
+            border-radius: 6px;
+            height: 24px;
+            display: flex;
+            overflow: hidden;
+        }
+        .multi-bar-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.6rem;
+            font-weight: 500;
+        }
+
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 16px;
+            border: 1px solid #eef2f8;
+            overflow-x: auto;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+        .data-table th {
+            text-align: left;
+            padding: 10px 8px;
+            background: #f8fafd;
+            font-weight: 600;
+            color: #1e2f41;
+            border-bottom: 1px solid #e4edf2;
+        }
+        .data-table td {
+            padding: 8px;
+            border-bottom: 1px solid #f0f4f9;
+            color: #2c3f55;
+        }
+        .data-table tr:hover td {
+            background-color: #fafcff;
+        }
+        .amount-cell {
+            font-family: monospace;
+        }
+        .reset-demo {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+        .demo-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 5px 16px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            color: #2c4c6e;
+        }
+        .demo-btn:hover {
+            background: #e2eaf1;
+        }
+
+        @media (max-width: 780px) {
+            body { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+    <div class="header">
+        <div class="title-area">
+            <h1 id="mainTitle">📊 订单业务看板</h1>
+            <p id="subDesc">大货 / 样板 / 客户跟进 / 未出货 · 区域数据动态汇总</p>
+        </div>
+        <div class="lang-switch">
+            <button class="lang-btn active" data-lang="zh">中文</button>
+            <button class="lang-btn" data-lang="en">English</button>
+        </div>
+    </div>
+
+    <div class="cards-grid">
+        <!-- 大货订单 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">📦</div><h3 id="titleBulk">大货订单</h3></div>
+            <div class="form-group"><label id="labelBulkRegion">客户区域</label><select id="bulkRegion"></select></div>
+            <div class="row-2cols">
+                <div class="form-group"><label id="labelBulkQty">订单数量 (件)</label><input type="number" id="bulkQty" value="0" min="0" step="1"></div>
+                <div class="form-group"><label id="labelBulkAmount">金额 (¥)</label><input type="number" id="bulkAmount" value="0" min="0" step="1000"></div>
+            </div>
+            <button class="update-btn" id="updateBulkBtn">✓ 更新数据</button>
+            <div class="current-hint" id="bulkHint"></div>
+        </div>
+
+        <!-- 样板单 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">🧷</div><h3 id="titleSample">样板单</h3></div>
+            <div class="form-group"><label id="labelSampleRegion">客户区域</label><select id="sampleRegion"></select></div>
+            <div class="form-group"><label id="labelSampleQty">样板数量 (件)</label><input type="number" id="sampleQty" value="0" min="0" step="1"></div>
+            <button class="update-btn" id="updateSampleBtn">✓ 更新数据</button>
+            <div class="current-hint" id="sampleHint"></div>
+        </div>
+
+        <!-- 客户跟进中 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">🤝</div><h3 id="titleProspect">客户跟进中</h3></div>
+            <div class="form-group"><label id="labelProspectRegion">客户区域</label><select id="prospectRegion"></select></div>
+            <div class="form-group"><label id="labelProspectQty">潜在客户数量</label><input type="number" id="prospectQty" value="0" min="0" step="1"></div>
+            <button class="update-btn" id="updateProspectBtn">✓ 更新数据</button>
+            <div class="current-hint" id="prospectHint"></div>
+        </div>
+
+        <!-- 未出货订单 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">⏳</div><h3 id="titleUndelivered">订单未出货</h3></div>
+            <div class="form-group"><label id="labelUndeliveredRegion">客户区域</label><select id="undeliveredRegion"></select></div>
+            <div class="form-group"><label id="labelUndeliveredQty">未出货订单数量</label><input type="number" id="undeliveredQty" value="0" min="0" step="1"></div>
+            <button class="update-btn" id="updateUndeliveredBtn">✓ 更新数据</button>
+            <div class="current-hint" id="undeliveredHint"></div>
+        </div>
+    </div>
+
+    <!-- 图表区域 - 使用纯CSS图表，无需外部库 -->
+    <div class="charts-section">
+        <div class="section-title" id="chartTitleSection">📈 区域业绩 & 进度可视化</div>
+        <div class="charts-flex">
+            <!-- 金额图表 -->
+            <div class="chart-container">
+                <div class="chart-title" id="amountChartTitle">📊 大货订单金额 (万元)</div>
+                <div class="simple-chart" id="amountChart"></div>
+            </div>
+            <!-- 数量图表 -->
+            <div class="chart-container">
+                <div class="chart-title" id="qtyChartTitle">📊 各区域业务数量对比</div>
+                <div class="legend" id="legendArea"></div>
+                <div class="simple-chart" id="qtyChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据表 -->
+    <div class="table-wrapper">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+            <div class="section-title" style="margin-bottom: 0;" id="tableTitle">📋 区域数据明细表</div>
+            <div><button class="demo-btn" id="resetDemoBtn">⟳ 重置示例数据</button></div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead id="tableHeader"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 区域定义
+    const REGIONS = ["华东", "华南", "华北", "西南", "西北", "海外"];
+    const REGIONS_EN = ["East China", "South China", "North China", "Southwest", "Northwest", "Overseas"];
+    
+    let currentLang = 'zh';
+    let storeData = {};
+
+    // 国际化文本
+    const locales = {
+        zh: {
+            mainTitle: "📊 订单业务看板", subDesc: "大货 / 样板 / 客户跟进 / 未出货 · 区域数据动态汇总",
+            titleBulk: "大货订单", titleSample: "样板单", titleProspect: "客户跟进中", titleUndelivered: "订单未出货",
+            labelBulkRegion: "客户区域", labelSampleRegion: "客户区域", labelProspectRegion: "客户区域", labelUndeliveredRegion: "客户区域",
+            labelBulkQty: "订单数量 (件)", labelBulkAmount: "金额 (¥)", labelSampleQty: "样板数量 (件)",
+            labelProspectQty: "潜在客户数量", labelUndeliveredQty: "未出货订单数量",
+            updateBtn: "✓ 更新数据", resetBtn: "⟳ 重置示例数据",
+            chartTitle: "📈 区域业绩 & 进度可视化", tableTitle: "📋 区域数据明细表",
+            tableHeaders: ["区域", "大货订单(件)", "大货金额(¥)", "样板数量(件)", "潜在客户(个)", "未出货订单(件)"],
+            totalLabel: "📌 合计",
+            amountChartTitle: "📊 大货订单金额 (万元)",
+            qtyChartTitle: "📊 各区域业务数量对比",
+            legendItems: ["大货订单(件)", "样板数量(件)", "潜在客户(个)", "未出货订单(件)"]
+        },
+        en: {
+            mainTitle: "📊 Order Dashboard", subDesc: "Bulk Order / Sample / Prospects / Undelivered · Regional Data",
+            titleBulk: "Bulk Orders", titleSample: "Sample Orders", titleProspect: "Follow-ups", titleUndelivered: "Undelivered Orders",
+            labelBulkRegion: "Customer Region", labelSampleRegion: "Customer Region", labelProspectRegion: "Region", labelUndeliveredRegion: "Region",
+            labelBulkQty: "Order Qty (pcs)", labelBulkAmount: "Amount (¥)", labelSampleQty: "Sample Qty (pcs)",
+            labelProspectQty: "Prospects Count", labelUndeliveredQty: "Undelivered Qty",
+            updateBtn: "✓ Update", resetBtn: "⟳ Reset Demo",
+            chartTitle: "📈 Regional Performance & Progress", tableTitle: "📋 Regional Data Summary",
+            tableHeaders: ["Region", "Bulk Qty", "Bulk Amount (¥)", "Sample Qty", "Prospects", "Undelivered"],
+            totalLabel: "📌 Total",
+            amountChartTitle: "📊 Bulk Order Amount (10K ¥)",
+            qtyChartTitle: "📊 Regional Business Quantity Comparison",
+            legendItems: ["Bulk Qty(pcs)", "Sample(pcs)", "Prospects", "Undelivered(pcs)"]
+        }
+    };
+
+    function getRegionName(region) {
+        return currentLang === 'en' ? (REGIONS_EN[REGIONS.indexOf(region)] || region) : region;
+    }
+
+    function initDataStore() {
+        REGIONS.forEach(r => {
+            storeData[r] = { bulkQty: 0, bulkAmount: 0, sampleQty: 0, prospectQty: 0, undeliveredQty: 0 };
+        });
+    }
+
+    function loadDemoData() {
+        storeData["华东"] = { bulkQty: 248, bulkAmount: 128600, sampleQty: 42, prospectQty: 86, undeliveredQty: 12 };
+        storeData["华南"] = { bulkQty: 312, bulkAmount: 215400, sampleQty: 67, prospectQty: 124, undeliveredQty: 23 };
+        storeData["华北"] = { bulkQty: 185, bulkAmount: 97300, sampleQty: 38, prospectQty: 54, undeliveredQty: 9 };
+        storeData["西南"] = { bulkQty: 132, bulkAmount: 68400, sampleQty: 29, prospectQty: 47, undeliveredQty: 5 };
+        storeData["西北"] = { bulkQty: 96, bulkAmount: 41200, sampleQty: 18, prospectQty: 32, undeliveredQty: 3 };
+        storeData["海外"] = { bulkQty: 57, bulkAmount: 189900, sampleQty: 22, prospectQty: 41, undeliveredQty: 7 };
+    }
+
+    // 渲染金额图表
+    function renderAmountChart() {
+        const container = document.getElementById('amountChart');
+        if (!container) return;
+        
+        const maxAmount = Math.max(...REGIONS.map(r => storeData[r]?.bulkAmount || 0));
+        const maxAmountWan = maxAmount / 10000;
+        
+        let html = '';
+        REGIONS.forEach(region => {
+            const amount = storeData[region]?.bulkAmount || 0;
+            const amountWan = amount / 10000;
+            const percent = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+            html += `
+                <div class="bar-item">
+                    <div class="bar-label">
+                        <span>${getRegionName(region)}</span>
+                        <span>¥${amount.toLocaleString()}</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" style="width: ${percent}%;">${amountWan.toFixed(1)}万</div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    // 渲染数量对比图表（堆叠条形图）
+    function renderQtyChart() {
+        const container = document.getElementById('qtyChart');
+        const legendArea = document.getElementById('legendArea');
+        if (!container) return;
+        
+        const t = locales[currentLang];
+        
+        // 渲染图例
+        const colors = ['#f97316', '#8b5cf6', '#10b981', '#ef4444'];
+        legendArea.innerHTML = t.legendItems.map((item, idx) => `
+            <div class="legend-item">
+                <div class="legend-color" style="background: ${colors[idx]}"></div>
+                <span>${item}</span>
+            </div>
+        `).join('');
+        
+        // 计算每个区域的最大总值用于百分比
+        let maxTotal = 0;
+        const totals = REGIONS.map(region => {
+            const d = storeData[region];
+            const total = (d?.bulkQty || 0) + (d?.sampleQty || 0) + (d?.prospectQty || 0) + (d?.undeliveredQty || 0);
+            if (total > maxTotal) maxTotal = total;
+            return total;
+        });
+        
+        let html = '';
+        REGIONS.forEach((region, idx) => {
+            const d = storeData[region];
+            const bulkQty = d?.bulkQty || 0;
+            const sampleQty = d?.sampleQty || 0;
+            const prospectQty = d?.prospectQty || 0;
+            const undeliveredQty = d?.undeliveredQty || 0;
+            const total = bulkQty + sampleQty + prospectQty + undeliveredQty;
+            
+            // 计算各部分百分比
+            const bulkPercent = maxTotal > 0 ? (bulkQty / maxTotal) * 100 : 0;
+            const samplePercent = maxTotal > 0 ? (sampleQty / maxTotal) * 100 : 0;
+            const prospectPercent = maxTotal > 0 ? (prospectQty / maxTotal) * 100 : 0;
+            const undeliveredPercent = maxTotal > 0 ? (undeliveredQty / maxTotal) * 100 : 0;
+            
+            html += `
+                <div class="multi-bar-item">
+                    <div class="bar-label">
+                        <span>${getRegionName(region)}</span>
+                        <span>总计: ${total}</span>
+                    </div>
+                    <div class="multi-bar-bg">
+                        ${bulkQty > 0 ? `<div class="multi-bar-segment" style="width: ${bulkPercent}%; background: #f97316;">${bulkQty}</div>` : ''}
+                        ${sampleQty > 0 ? `<div class="multi-bar-segment" style="width: ${samplePercent}%; background: #8b5cf6;">${sampleQty}</div>` : ''}
+                        ${prospectQty > 0 ? `<div class="multi-bar-segment" style="width: ${prospectPercent}%; background: #10b981;">${prospectQty}</div>` : ''}
+                        ${undeliveredQty > 0 ? `<div class="multi-bar-segment" style="width: ${undeliveredPercent}%; background: #ef4444;">${undeliveredQty}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function renderTable() {
+        const thead = document.getElementById('tableHeader');
+        const tbody = document.getElementById('tableBody');
+        if (!thead || !tbody) return;
+        
+        const t = locales[currentLang];
+        thead.innerHTML = `<tr>${t.tableHeaders.map(h => `<th>${h}</th>`).join('')}</tr>`;
+        
+        let html = '';
+        let totals = { bulkQty: 0, bulkAmount: 0, sampleQty: 0, prospectQty: 0, undeliveredQty: 0 };
+        
+        REGIONS.forEach(region => {
+            const d = storeData[region];
+            if (d) {
+                totals.bulkQty += d.bulkQty;
+                totals.bulkAmount += d.bulkAmount;
+                totals.sampleQty += d.sampleQty;
+                totals.prospectQty += d.prospectQty;
+                totals.undeliveredQty += d.undeliveredQty;
+                html += `<tr>
+                            <td style="font-weight:500;">${getRegionName(region)}</td>
+                            <td>${d.bulkQty.toLocaleString()}</td>
+                            <td class="amount-cell">¥ ${d.bulkAmount.toLocaleString()}</td>
+                            <td>${d.sampleQty.toLocaleString()}</td>
+                            <td>${d.prospectQty.toLocaleString()}</td>
+                            <td>${d.undeliveredQty.toLocaleString()}</td>
+                        </tr>`;
+            }
+        });
+        
+        html += `<tr style="background:#fefce8; font-weight:600;">
+                    <td>${t.totalLabel}</td>
+                    <td>${totals.bulkQty.toLocaleString()}</td>
+                    <td class="amount-cell">¥ ${totals.bulkAmount.toLocaleString()}</td>
+                    <td>${totals.sampleQty.toLocaleString()}</td>
+                    <td>${totals.prospectQty.toLocaleString()}</td>
+                    <td>${totals.undeliveredQty.toLocaleString()}</td>
+                 </tr>`;
+        tbody.innerHTML = html;
+    }
+
+    function populateSelects() {
+        const selectIds = ['bulkRegion', 'sampleRegion', 'prospectRegion', 'undeliveredRegion'];
+        selectIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                const currentVal = el.value;
+                el.innerHTML = '';
+                REGIONS.forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region;
+                    option.textContent = getRegionName(region);
+                    el.appendChild(option);
+                });
+                if (currentVal && REGIONS.includes(currentVal)) el.value = currentVal;
+                else if (REGIONS.length) el.value = REGIONS[0];
+            }
+        });
+    }
+
+    function syncModules() {
+        const bulkRegion = document.getElementById('bulkRegion')?.value;
+        if (bulkRegion && storeData[bulkRegion]) {
+            const d = storeData[bulkRegion];
+            document.getElementById('bulkQty').value = d.bulkQty;
+            document.getElementById('bulkAmount').value = d.bulkAmount;
+            document.getElementById('bulkHint').innerHTML = `${getRegionName(bulkRegion)} | 数量:${d.bulkQty} 金额:¥${d.bulkAmount.toLocaleString()}`;
+        }
+        
+        const sampleRegion = document.getElementById('sampleRegion')?.value;
+        if (sampleRegion && storeData[sampleRegion]) {
+            const d = storeData[sampleRegion];
+            document.getElementById('sampleQty').value = d.sampleQty;
+            document.getElementById('sampleHint').innerHTML = `${getRegionName(sampleRegion)} | 样板: ${d.sampleQty} 件`;
+        }
+        
+        const prospectRegion = document.getElementById('prospectRegion')?.value;
+        if (prospectRegion && storeData[prospectRegion]) {
+            const d = storeData[prospectRegion];
+            document.getElementById('prospectQty').value = d.prospectQty;
+            document.getElementById('prospectHint').innerHTML = `${getRegionName(prospectRegion)} | 潜在客户: ${d.prospectQty}`;
+        }
+        
+        const undeliveredRegion = document.getElementById('undeliveredRegion')?.value;
+        if (undeliveredRegion && storeData[undeliveredRegion]) {
+            const d = storeData[undeliveredRegion];
+            document.getElementById('undeliveredQty').value = d.undeliveredQty;
+            document.getElementById('undeliveredHint').innerHTML = `${getRegionName(undeliveredRegion)} | 未出货: ${d.undeliveredQty}`;
+        }
+    }
+
+    function refreshUI() {
+        const t = locales[currentLang];
+        document.getElementById('mainTitle').innerText = t.mainTitle;
+        document.getElementById('subDesc').innerText = t.subDesc;
+        document.getElementById('titleBulk').innerText = t.titleBulk;
+        document.getElementById('titleSample').innerText = t.titleSample;
+        document.getElementById('titleProspect').innerText = t.titleProspect;
+        document.getElementById('titleUndelivered').innerText = t.titleUndelivered;
+        document.getElementById('labelBulkRegion').innerText = t.labelBulkRegion;
+        document.getElementById('labelSampleRegion').innerText = t.labelSampleRegion;
+        document.getElementById('labelProspectRegion').innerText = t.labelProspectRegion;
+        document.getElementById('labelUndeliveredRegion').innerText = t.labelUndeliveredRegion;
+        document.getElementById('labelBulkQty').innerText = t.labelBulkQty;
+        document.getElementById('labelBulkAmount').innerText = t.labelBulkAmount;
+        document.getElementById('labelSampleQty').innerText = t.labelSampleQty;
+        document.getElementById('labelProspectQty').innerText = t.labelProspectQty;
+        document.getElementById('labelUndeliveredQty').innerText = t.labelUndeliveredQty;
+        document.querySelectorAll('.update-btn').forEach(btn => btn.innerText = t.updateBtn);
+        document.getElementById('resetDemoBtn').innerText = t.resetBtn;
+        document.getElementById('chartTitleSection').innerHTML = t.chartTitle;
+        document.getElementById('tableTitle').innerHTML = t.tableTitle;
+        document.getElementById('amountChartTitle').innerHTML = t.amountChartTitle;
+        document.getElementById('qtyChartTitle').innerHTML = t.qtyChartTitle;
+        
+        populateSelects();
+        renderTable();
+        renderAmountChart();
+        renderQtyChart();
+        syncModules();
+    }
+
+    function updateRegionData(region, field, value) {
+        if (!storeData[region]) return;
+        let num = parseFloat(value);
+        if (isNaN(num)) num = 0;
+        if (num < 0) num = 0;
+        storeData[region][field] = field === 'bulkAmount' ? Math.round(num) : Math.floor(num);
+        refreshUI();
+    }
+
+    function updateBulkOrder(region, qty, amount) {
+        if (!storeData[region]) return;
+        storeData[region].bulkQty = Math.floor(Math.max(0, parseInt(qty) || 0));
+        storeData[region].bulkAmount = Math.max(0, parseFloat(amount) || 0);
+        refreshUI();
+    }
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        refreshUI();
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            if (btn.getAttribute('data-lang') === lang) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    }
+
+    function bindEvents() {
+        document.getElementById('updateBulkBtn')?.addEventListener('click', () => {
+            const region = document.getElementById('bulkRegion').value;
+            const qty = document.getElementById('bulkQty').value;
+            const amt = document.getElementById('bulkAmount').value;
+            if (region) updateBulkOrder(region, qty, amt);
+        });
+        document.getElementById('updateSampleBtn')?.addEventListener('click', () => {
+            const region = document.getElementById('sampleRegion').value;
+            const qty = document.getElementById('sampleQty').value;
+            if (region) updateRegionData(region, 'sampleQty', qty);
+        });
+        document.getElementById('updateProspectBtn')?.addEventListener('click', () => {
+            const region = document.getElementById('prospectRegion').value;
+            const val = document.getElementById('prospectQty').value;
+            if (region) updateRegionData(region, 'prospectQty', val);
+        });
+        document.getElementById('updateUndeliveredBtn')?.addEventListener('click', () => {
+            const region = document.getElementById('undeliveredRegion').value;
+            const val = document.getElementById('undeliveredQty').value;
+            if (region) updateRegionData(region, 'undeliveredQty', val);
+        });
+        document.getElementById('resetDemoBtn')?.addEventListener('click', () => {
+            initDataStore();
+            loadDemoData();
+            refreshUI();
+        });
+        ['bulkRegion', 'sampleRegion', 'prospectRegion', 'undeliveredRegion'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', () => syncModules());
+        });
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => setLanguage(btn.getAttribute('data-lang')));
+        });
+    }
+
+    function init() {
+        initDataStore();
+        loadDemoData();
+        bindEvents();
+        populateSelects();
+        refreshUI();
+    }
+
+    init();
+</script>
+</body>
+</html>
