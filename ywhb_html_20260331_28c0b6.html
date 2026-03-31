@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>订单看板 | 业务进度分析</title>
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f5f7fb;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            padding: 28px 24px;
+            color: #1e2a3e;
+        }
+
+        .dashboard-container {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        /* 头部 + 语言切换 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
+        .title-area h1 {
+            font-size: 1.85rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #1f3b64, #2c5a9e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+        .title-area p {
+            color: #5a6e8a;
+            font-size: 0.85rem;
+            margin-top: 6px;
+            border-left: 3px solid #3b82f6;
+            padding-left: 12px;
+        }
+        .lang-switch {
+            background: white;
+            border-radius: 40px;
+            padding: 4px;
+            display: flex;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e2edf2;
+        }
+        .lang-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 18px;
+            border-radius: 32px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #4b5e77;
+        }
+        .lang-btn.active {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .lang-btn:not(.active):hover {
+            background: #eef2ff;
+        }
+
+        /* 卡片网格 */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 42px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.02), 0 2px 4px rgba(0, 0, 0, 0.03);
+            padding: 20px 22px;
+            transition: all 0.2s;
+            border: 1px solid #eef2f8;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 28px -10px rgba(0, 0, 0, 0.08);
+            border-color: #cddfe7;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eef2ff;
+            padding-bottom: 12px;
+        }
+        .card-icon {
+            width: 38px;
+            height: 38px;
+            background: #eef3fc;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+        .card-header h3 {
+            font-size: 1.18rem;
+            font-weight: 600;
+            color: #0f2b3d;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #5b6e8c;
+            margin-bottom: 6px;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 16px;
+            border: 1px solid #e2edf2;
+            background: #ffffff;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            outline: none;
+            font-family: inherit;
+        }
+        select:focus, input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        .row-2cols {
+            display: flex;
+            gap: 12px;
+        }
+        .row-2cols .form-group {
+            flex: 1;
+        }
+        .update-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 9px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .update-btn:hover {
+            background: #2563eb;
+            transform: scale(0.97);
+        }
+        .current-hint {
+            font-size: 0.7rem;
+            color: #5f7f9e;
+            margin-top: 10px;
+            text-align: right;
+            background: #fafcff;
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+
+        /* 图表区域 */
+        .charts-section {
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.02);
+            padding: 20px 20px 20px;
+            margin-bottom: 36px;
+            border: 1px solid #eef2f8;
+        }
+        .section-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-left: 10px;
+            border-left: 4px solid #3b82f6;
+            color: #1f3b64;
+        }
+        .charts-flex {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+        .chart-box {
+            flex: 1;
+            min-width: 280px;
+            height: 370px;
+        }
+
+        /* 数据表 */
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 20px;
+            border: 1px solid #eef2f8;
+            overflow-x: auto;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .data-table th {
+            text-align: left;
+            padding: 14px 12px;
+            background: #f8fafd;
+            font-weight: 600;
+            color: #1e2f41;
+            border-bottom: 1.5px solid #e4edf2;
+        }
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f4f9;
+            color: #2c3f55;
+        }
+        .data-table tr:hover td {
+            background-color: #fafcff;
+        }
+        .amount-cell {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+        }
+        .reset-demo {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+        }
+        .demo-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #2c4c6e;
+            transition: 0.2s;
+        }
+        .demo-btn:hover {
+            background: #e2eaf1;
+        }
+
+        @media (max-width: 780px) {
+            body { padding: 16px; }
+            .chart-box { height: 280px; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+    <div class="header">
+        <div class="title-area">
+            <h1 id="mainTitle">📊 订单业务看板</h1>
+            <p id="subDesc">大货 / 样板 / 客户跟进 / 未出货 · 区域数据动态汇总</p>
+        </div>
+        <div class="lang-switch">
+            <button class="lang-btn active" data-lang="zh">中文</button>
+            <button class="lang-btn" data-lang="en">English</button>
+        </div>
+    </div>
+
+    <!-- 四个卡片 -->
+    <div class="cards-grid">
+        <!-- 1. 大货订单 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">📦</div><h3 id="titleBulk">大货订单</h3></div>
+            <div class="form-group"><label id="labelBulkRegion">客户区域</label><select id="bulkRegion"></select></div>
+            <div class="row-2cols">
+                <div class="form-group"><label id="labelBulkQty">订单数量 (件)</label><input type="number" id="bulkQty" value="0" min="0" step="1"></div>
+                <div class="form-group"><label id="labelBulkAmount">金额 (¥)</label><input type="number" id="bulkAmount" value="0" min="0" step="1000"></div>
+            </div>
+            <button class="update-btn" id="updateBulkBtn">✓ 更新数据</button>
+            <div class="current-hint" id="bulkHint"></div>
+        </div>
+        <!-- 2. 样板单 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">🧷</div><h3 id="titleSample">样板单</h3></div>
+            <div class="form-group"><label id="labelSampleRegion">客户区域</label><select id="sampleRegion"></select></div>
+            <div class="form-group"><label id="labelSampleQty">样板数量 (件)</label><input type="number" id="sampleQty" value="0" min="0" step="1"></div>
+            <button class="update-btn" id="updateSampleBtn">✓ 更新数据</button>
+            <div class="current-hint" id="sampleHint"></div>
+        </div>
+        <!-- 3. 客户跟进中 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">🤝</div><h3 id="titleProspect">客户跟进中</h3></div>
+            <div class="form-group"><label id="labelProspectRegion">客户区域</label><select id="prospectRegion"></select></div>
+            <div class="form-group"><label id="labelProspectQty">潜在客户数量</label><input type="number" id="prospectQty" value="0" min="0" step="1"></div>
+            <button class="update-btn" id="updateProspectBtn">✓ 更新数据</button>
+            <div class="current-hint" id="prospectHint"></div>
+        </div>
+        <!-- 4. 未出货订单 -->
+        <div class="stat-card">
+            <div class="card-header"><div class="card-icon">⏳</div><h3 id="titleUndelivered">订单未出货</h3></div>
+            <div class="form-group"><label id="labelUndeliveredRegion">客户区域</label><select id="undeliveredRegion"></select></div>
+            <div class="form-group"><label id="labelUndeliveredQty">未出货订单数量</label><input type="number" id="undeliveredQty" value="0" min="0" step="1"></div>
+            <button class="update-btn" id="updateUndeliveredBtn">✓ 更新数据</button>
+            <div class="current-hint" id="undeliveredHint"></div>
+        </div>
+    </div>
+
+    <!-- 图表区 -->
+    <div class="charts-section">
+        <div class="section-title" id="chartTitleSection">📈 区域业绩 & 进度可视化</div>
+        <div class="charts-flex">
+            <div class="chart-box" id="chartAmount"></div>
+            <div class="chart-box" id="chartQuantities"></div>
+        </div>
+    </div>
+
+    <!-- 数据表 -->
+    <div class="table-wrapper">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 0;" id="tableTitle">📋 区域数据明细表</div>
+            <div><button class="demo-btn" id="resetDemoBtn">⟳ 重置示例数据</button></div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="dataTable">
+                <thead id="tableHeader"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- 国际化词库 ----------
+    const locales = {
+        zh: {
+            mainTitle: "📊 订单业务看板", subDesc: "大货 / 样板 / 客户跟进 / 未出货 · 区域数据动态汇总",
+            titleBulk: "大货订单", titleSample: "样板单", titleProspect: "客户跟进中", titleUndelivered: "订单未出货",
+            labelBulkRegion: "客户区域", labelSampleRegion: "客户区域", labelProspectRegion: "客户区域", labelUndeliveredRegion: "客户区域",
+            labelBulkQty: "订单数量 (件)", labelBulkAmount: "金额 (¥)", labelSampleQty: "样板数量 (件)",
+            labelProspectQty: "潜在客户数量", labelUndeliveredQty: "未出货订单数量",
+            updateBtn: "✓ 更新数据", resetBtn: "⟳ 重置示例数据",
+            chartTitle: "📈 区域业绩 & 进度可视化", tableTitle: "📋 区域数据明细表",
+            tableHeaders: ["区域", "大货订单(件)", "大货金额(¥)", "样板数量(件)", "潜在客户(个)", "未出货订单(件)"],
+            totalLabel: "📌 合计",
+            hintPrefix_bulk: (r, q, a) => `${r} | 数量:${q} 金额:¥${a.toLocaleString()}`,
+            hintPrefix_sample: (r, q) => `${r} | 样板: ${q} 件`,
+            hintPrefix_prospect: (r, q) => `${r} | 潜在客户: ${q}`,
+            hintPrefix_undelivered: (r, q) => `${r} | 未出货: ${q}`,
+            chartAmountName: "大货订单金额", chartSeriesQty: ["大货订单(件)", "样板数量(件)", "潜在客户(个)", "未出货订单(件)"],
+            yAxisAmount: "金额 (人民币)", yAxisQty: "数量 (件/个)"
+        },
+        en: {
+            mainTitle: "📊 Order Dashboard", subDesc: "Bulk Order / Sample / Prospects / Undelivered · Regional Data",
+            titleBulk: "Bulk Orders", titleSample: "Sample Orders", titleProspect: "Follow-ups", titleUndelivered: "Undelivered Orders",
+            labelBulkRegion: "Customer Region", labelSampleRegion: "Customer Region", labelProspectRegion: "Region", labelUndeliveredRegion: "Region",
+            labelBulkQty: "Order Qty (pcs)", labelBulkAmount: "Amount (¥)", labelSampleQty: "Sample Qty (pcs)",
+            labelProspectQty: "Prospects Count", labelUndeliveredQty: "Undelivered Qty",
+            updateBtn: "✓ Update", resetBtn: "⟳ Reset Demo",
+            chartTitle: "📈 Regional Performance & Progress", tableTitle: "📋 Regional Data Summary",
+            tableHeaders: ["Region", "Bulk Qty", "Bulk Amount (¥)", "Sample Qty", "Prospects", "Undelivered"],
+            totalLabel: "📌 Total",
+            hintPrefix_bulk: (r, q, a) => `${r} | Qty:${q} Amount:¥${a.toLocaleString()}`,
+            hintPrefix_sample: (r, q) => `${r} | Sample: ${q} pcs`,
+            hintPrefix_prospect: (r, q) => `${r} | Prospects: ${q}`,
+            hintPrefix_undelivered: (r, q) => `${r} | Undelivered: ${q}`,
+            chartAmountName: "Bulk Amount (¥)", chartSeriesQty: ["Bulk Qty(pcs)", "Sample(pcs)", "Prospects", "Undelivered(pcs)"],
+            yAxisAmount: "Amount (CNY)", yAxisQty: "Quantity (pcs / units)"
+        }
+    };
+    let currentLang = 'zh';
+    const REGIONS = ["华东", "华南", "华北", "西南", "西北", "海外"];
+    const REGIONS_EN = ["East China", "South China", "North China", "Southwest", "Northwest", "Overseas"];
+    function getRegionName(region, lang) { return lang === 'en' ? (REGIONS_EN[REGIONS.indexOf(region)] || region) : region; }
+
+    // 数据仓库
+    let storeData = {};
+    function initDataStore() { REGIONS.forEach(r => storeData[r] = { bulkQty:0, bulkAmount:0, sampleQty:0, prospectQty:0, undeliveredQty:0 }); }
+    function loadDemoData() {
+        storeData["华东"] = { bulkQty: 248, bulkAmount: 128600, sampleQty: 42, prospectQty: 86, undeliveredQty: 12 };
+        storeData["华南"] = { bulkQty: 312, bulkAmount: 215400, sampleQty: 67, prospectQty: 124, undeliveredQty: 23 };
+        storeData["华北"] = { bulkQty: 185, bulkAmount: 97300, sampleQty: 38, prospectQty: 54, undeliveredQty: 9 };
+        storeData["西南"] = { bulkQty: 132, bulkAmount: 68400, sampleQty: 29, prospectQty: 47, undeliveredQty: 5 };
+        storeData["西北"] = { bulkQty: 96, bulkAmount: 41200, sampleQty: 18, prospectQty: 32, undeliveredQty: 3 };
+        storeData["海外"] = { bulkQty: 57, bulkAmount: 189900, sampleQty: 22, prospectQty: 41, undeliveredQty: 7 };
+    }
+
+    function updateRegionData(region, field, value) {
+        if (!storeData[region]) storeData[region] = { bulkQty:0, bulkAmount:0, sampleQty:0, prospectQty:0, undeliveredQty:0 };
+        let num = parseFloat(value); if (isNaN(num)) num = 0; if (num < 0) num = 0;
+        storeData[region][field] = field === 'bulkAmount' ? Math.round(num) : Math.floor(num);
+        refreshAll();
+    }
+    function updateBulkOrder(region, qty, amount) {
+        if (!storeData[region]) storeData[region] = { bulkQty:0, bulkAmount:0, sampleQty:0, prospectQty:0, undeliveredQty:0 };
+        storeData[region].bulkQty = Math.floor(Math.max(0, parseInt(qty) || 0));
+        storeData[region].bulkAmount = Math.max(0, parseFloat(amount) || 0);
+        refreshAll();
+    }
+
+    let chartAmount, chartQuant;
+    // 渲染图表（支持中英文，清晰金额显示）
+    function renderCharts() {
+        if (!chartAmount || !chartQuant) return;
+        const regionsList = REGIONS;
+        const amountData = regionsList.map(r => storeData[r]?.bulkAmount || 0);
+        const bulkQtyData = regionsList.map(r => storeData[r]?.bulkQty || 0);
+        const sampleQtyData = regionsList.map(r => storeData[r]?.sampleQty || 0);
+        const prospectQtyData = regionsList.map(r => storeData[r]?.prospectQty || 0);
+        const undeliveredData = regionsList.map(r => storeData[r]?.undeliveredQty || 0);
+        const regionNames = regionsList.map(r => getRegionName(r, currentLang));
+        const t = locales[currentLang];
+
+        // 金额图 - 优化清晰度：大字体、千分位、加背景网格柔和
+        const amountOption = {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (val) => val ? '¥ ' + val.toLocaleString() : '¥ 0' },
+            grid: { top: 45, bottom: 25, left: 70, right: 30, containLabel: true },
+            xAxis: { type: 'category', data: regionNames, axisLabel: { fontWeight: 500, fontSize: 11, rotate: 0, interval: 0 } },
+            yAxis: { type: 'value', name: t.yAxisAmount, nameLocation: 'middle', nameGap: 50, nameTextStyle: { fontWeight: 500, fontSize: 11 },
+                     axisLabel: { fontSize: 11, formatter: (val) => '¥' + val.toLocaleString() }, splitLine: { lineStyle: { color: '#e9eef3', type: 'dashed' } } },
+            series: [{ name: t.chartAmountName, type: 'bar', data: amountData, barWidth: '32%',
+                       itemStyle: { borderRadius: [8,8,0,0], color: '#3b82f6', shadowBlur: 4 },
+                       label: { show: true, position: 'top', formatter: (p) => '¥' + p.value.toLocaleString(), fontSize: 10, fontWeight: 'bold' } }]
+        };
+        chartAmount.setOption(amountOption, true);
+        // 数量组合图，系列名国际化
+        const quantOption = {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            legend: { data: t.chartSeriesQty, left: 'left', itemWidth: 25, textStyle: { fontSize: 11 } },
+            grid: { top: 60, bottom: 25, left: 65, right: 20, containLabel: true },
+            xAxis: { type: 'category', data: regionNames, axisLabel: { fontSize: 11, rotate: 0 } },
+            yAxis: { type: 'value', name: t.yAxisQty, nameLocation: 'middle', nameGap: 48, nameTextStyle: { fontSize: 11 },
+                     axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { color: '#e9eef3' } } },
+            series: [
+                { name: t.chartSeriesQty[0], type: 'bar', data: bulkQtyData, itemStyle: { borderRadius: [5,5,0,0], color: '#f97316' }, barWidth: '18%' },
+                { name: t.chartSeriesQty[1], type: 'bar', data: sampleQtyData, itemStyle: { borderRadius: [5,5,0,0], color: '#8b5cf6' }, barWidth: '18%' },
+                { name: t.chartSeriesQty[2], type: 'bar', data: prospectQtyData, itemStyle: { borderRadius: [5,5,0,0], color: '#10b981' }, barWidth: '18%' },
+                { name: t.chartSeriesQty[3], type: 'bar', data: undeliveredData, itemStyle: { borderRadius: [5,5,0,0], color: '#ef4444' }, barWidth: '18%' }
+            ]
+        };
+        chartQuant.setOption(quantOption, true);
+    }
+
+    // 渲染表格 (含表头国际化)
+    function renderTable() {
+        const thead = document.getElementById('tableHeader');
+        const tbody = document.getElementById('tableBody');
+        if (!thead || !tbody) return;
+        const t = locales[currentLang];
+        thead.innerHTML = `<tr>${t.tableHeaders.map(h => `<th>${h}</th>`).join('')}</tr>`;
+        let html = '';
+        REGIONS.forEach(region => {
+            const data = storeData[region] || { bulkQty:0, bulkAmount:0, sampleQty:0, prospectQty:0, undeliveredQty:0 };
+            const regionShow = getRegionName(region, currentLang);
+            html += `<tr>
+                        <td style="font-weight:500;">${regionShow}</td>
+                        <td>${data.bulkQty.toLocaleString()}</td>
+                        <td class="amount-cell">¥ ${data.bulkAmount.toLocaleString()}</td>
+                        <td>${data.sampleQty.toLocaleString()}</td>
+                        <td>${data.prospectQty.toLocaleString()}</td>
+                        <td>${data.undeliveredQty.toLocaleString()}</td>
+                     </tr>`;
+        });
+        let totalBulkQty=0,totalBulkAmount=0,totalSample=0,totalProspect=0,totalUndelivered=0;
+        REGIONS.forEach(r => { const d = storeData[r]; if(d){ totalBulkQty+=d.bulkQty; totalBulkAmount+=d.bulkAmount; totalSample+=d.sampleQty; totalProspect+=d.prospectQty; totalUndelivered+=d.undeliveredQty; } });
+        html += `<tr style="background:#fefce8; font-weight:600; border-top:2px solid #e2edf2;">
+                    <td>${t.totalLabel}</td>
+                    <td>${totalBulkQty.toLocaleString()}</td>
+                    <td class="amount-cell">¥ ${totalBulkAmount.toLocaleString()}</td>
+                    <td>${totalSample.toLocaleString()}</td>
+                    <td>${totalProspect.toLocaleString()}</td>
+                    <td>${totalUndelivered.toLocaleString()}</td>
+                 </tr>`;
+        tbody.innerHTML = html;
+    }
+
+    // 同步卡片内输入框与提示（多语言）
+    function syncModules() {
+        const t = locales[currentLang];
+        // 大货
+        const bulkRegion = document.getElementById('bulkRegion').value;
+        if (bulkRegion && storeData[bulkRegion]) {
+            const d = storeData[bulkRegion];
+            document.getElementById('bulkQty').value = d.bulkQty;
+            document.getElementById('bulkAmount').value = d.bulkAmount;
+            document.getElementById('bulkHint').innerText = t.hintPrefix_bulk(getRegionName(bulkRegion, currentLang), d.bulkQty, d.bulkAmount);
+        }
+        // 样板
+        const sampleRegion = document.getElementById('sampleRegion').value;
+        if (sampleRegion && storeData[sampleRegion]) {
+            const d = storeData[sampleRegion];
+            document.getElementById('sampleQty').value = d.sampleQty;
+            document.getElementById('sampleHint').innerText = t.hintPrefix_sample(getRegionName(sampleRegion, currentLang), d.sampleQty);
+        }
+        // 跟进
+        const prospectRegion = document.getElementById('prospectRegion').value;
+        if (prospectRegion && storeData[prospectRegion]) {
+            const d = storeData[prospectRegion];
+            document.getElementById('prospectQty').value = d.prospectQty;
+            document.getElementById('prospectHint').innerText = t.hintPrefix_prospect(getRegionName(prospectRegion, currentLang), d.prospectQty);
+        }
+        // 未出货
+        const undeliveredRegion = document.getElementById('undeliveredRegion').value;
+        if (undeliveredRegion && storeData[undeliveredRegion]) {
+            const d = storeData[undeliveredRegion];
+            document.getElementById('undeliveredQty').value = d.undeliveredQty;
+            document.getElementById('undeliveredHint').innerText = t.hintPrefix_undelivered(getRegionName(undeliveredRegion, currentLang), d.undeliveredQty);
+        }
+    }
+
+    // 刷新UI: 文本、表格、图表、卡片提示
+    function refreshStaticTexts() {
+        const t = locales[currentLang];
+        document.getElementById('mainTitle').innerText = t.mainTitle;
+        document.getElementById('subDesc').innerText = t.subDesc;
+        document.getElementById('titleBulk').innerText = t.titleBulk;
+        document.getElementById('titleSample').innerText = t.titleSample;
+        document.getElementById('titleProspect').innerText = t.titleProspect;
+        document.getElementById('titleUndelivered').innerText = t.titleUndelivered;
+        document.getElementById('labelBulkRegion').innerText = t.labelBulkRegion;
+        document.getElementById('labelSampleRegion').innerText = t.labelSampleRegion;
+        document.getElementById('labelProspectRegion').innerText = t.labelProspectRegion;
+        document.getElementById('labelUndeliveredRegion').innerText = t.labelUndeliveredRegion;
+        document.getElementById('labelBulkQty').innerText = t.labelBulkQty;
+        document.getElementById('labelBulkAmount').innerText = t.labelBulkAmount;
+        document.getElementById('labelSampleQty').innerText = t.labelSampleQty;
+        document.getElementById('labelProspectQty').innerText = t.labelProspectQty;
+        document.getElementById('labelUndeliveredQty').innerText = t.labelUndeliveredQty;
+        document.querySelectorAll('.update-btn').forEach(btn => btn.innerText = t.updateBtn);
+        document.getElementById('resetDemoBtn').innerText = t.resetBtn;
+        document.getElementById('chartTitleSection').innerHTML = t.chartTitle;
+        document.getElementById('tableTitle').innerHTML = t.tableTitle;
+        // 重新填充下拉框（保持区域显示多语言）
+        const selects = ['bulkRegion', 'sampleRegion', 'prospectRegion', 'undeliveredRegion'];
+        selects.forEach(id => {
+            const sel = document.getElementById(id);
+            const currentVal = sel.value;
+            sel.innerHTML = '';
+            REGIONS.forEach(region => {
+                const opt = document.createElement('option');
+                opt.value = region;
+                opt.textContent = getRegionName(region, currentLang);
+                sel.appendChild(opt);
+            });
+            if (currentVal && REGIONS.includes(currentVal)) sel.value = currentVal;
+            else if(REGIONS.length) sel.value = REGIONS[0];
+        });
+    }
+
+    function refreshAll() {
+        refreshStaticTexts();
+        renderTable();
+        renderCharts();
+        syncModules();
+    }
+
+    // 切换语言
+    function setLanguage(lang) {
+        currentLang = lang;
+        refreshAll();
+        // 激活样式
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            if(btn.getAttribute('data-lang') === lang) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    }
+
+    // 事件绑定
+    function bindEvents() {
+        document.getElementById('updateBulkBtn').addEventListener('click', () => {
+            const region = document.getElementById('bulkRegion').value;
+            const qty = document.getElementById('bulkQty').value;
+            const amt = document.getElementById('bulkAmount').value;
+            updateBulkOrder(region, qty, amt);
+        });
+        document.getElementById('updateSampleBtn').addEventListener('click', () => {
+            const region = document.getElementById('sampleRegion').value;
+            const qty = document.getElementById('sampleQty').value;
+            updateRegionData(region, 'sampleQty', qty);
+        });
+        document.getElementById('updateProspectBtn').addEventListener('click', () => {
+            const region = document.getElementById('prospectRegion').value;
+            const val = document.getElementById('prospectQty').value;
+            updateRegionData(region, 'prospectQty', val);
+        });
+        document.getElementById('updateUndeliveredBtn').addEventListener('click', () => {
+            const region = document.getElementById('undeliveredRegion').value;
+            const val = document.getElementById('undeliveredQty').value;
+            updateRegionData(region, 'undeliveredQty', val);
+        });
+        document.getElementById('resetDemoBtn').addEventListener('click', () => {
+            initDataStore();
+            loadDemoData();
+            refreshAll();
+        });
+        // 区域切换时刷新 hint
+        ['bulkRegion','sampleRegion','prospectRegion','undeliveredRegion'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => syncModules());
+        });
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { setLanguage(btn.getAttribute('data-lang')); });
+        });
+    }
+
+    // 初始化
+    function init() {
+        initDataStore();
+        loadDemoData();
+        chartAmount = echarts.init(document.getElementById('chartAmount'));
+        chartQuant = echarts.init(document.getElementById('chartQuantities'));
+        window.addEventListener('resize', () => { chartAmount.resize(); chartQuant.resize(); });
+        bindEvents();
+        setLanguage('zh');
+    }
+    init();
+</script>
+</body>
+</html>
